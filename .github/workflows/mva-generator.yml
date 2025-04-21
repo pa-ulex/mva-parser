@@ -35,8 +35,8 @@ jobs:
           cat airac.env | grep END | sed 's/^/NEXT_/' >> $GITHUB_ENV
           cat airac.env | grep IDENTIFIER >> $GITHUB_ENV
 
-      - name: Conditionally skip if scheduled and not 2 days before
-        if: github.event_name != 'workflow_dispatch'
+      - name: Check if it's 2 days before AIRAC
+        id: check-date
         run: |
           TARGET=$(date -d "$NEXT_START -2 days" +%F)
           TODAY=$(date -u +%F)
@@ -44,22 +44,26 @@ jobs:
           echo "AIRAC Start: $NEXT_START"
           echo "Today: $TODAY"
           echo "Target Run Day: $TARGET"
-          if [ "$TODAY" != "$TARGET" ]; then
-            echo "Not the correct day — exiting."
-            exit 0
+          if [ "$TODAY" = "$TARGET" ]; then
+            echo "run_next=true" >> $GITHUB_OUTPUT
+          else
+            echo "run_next=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Download DFS CSV
+        if: steps.check-date.outputs.run_next == 'true'
         run: |
           FILE_URL="https://aip.dfs.de/datasets/scripts/getItem.php?amdt=1&content=ED_MVA_${NEXT_START}_${NEXT_END}_revision.csv"
           echo "Downloading: $FILE_URL"
           curl -fSL "$FILE_URL" -o data.csv
 
       - name: Run Python script
+        if: steps.check-date.outputs.run_next == 'true'
         run: |
           python mva_parser.py data.csv output.txt
 
       - name: Upload output as artifact
+        if: steps.check-date.outputs.run_next == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: airac-output-${{ env.IDENTIFIER }}
