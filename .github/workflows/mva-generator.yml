@@ -36,6 +36,7 @@ jobs:
           cat airac.env | grep IDENTIFIER >> $GITHUB_ENV
 
       - name: Check if it's 2 days before AIRAC
+        if: github.event_name != 'workflow_dispatch'
         id: check-date
         run: |
           TARGET=$(date -d "$NEXT_START -2 days" +%F)
