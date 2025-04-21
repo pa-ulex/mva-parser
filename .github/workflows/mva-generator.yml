@@ -35,20 +35,25 @@ jobs:
           cat airac.env | grep END | sed 's/^/NEXT_/' >> $GITHUB_ENV
           cat airac.env | grep IDENTIFIER >> $GITHUB_ENV
 
-      - name: Check if it's 2 days before AIRAC
-        if: github.event_name != 'workflow_dispatch'
+      - name: Check if it's 2 days before AIRAC (only for scheduled runs)
         id: check-date
         run: |
-          TARGET=$(date -d "$NEXT_START -2 days" +%F)
-          TODAY=$(date -u +%F)
-          echo "AIRAC Identifier: $IDENTIFIER"
-          echo "AIRAC Start: $NEXT_START"
-          echo "Today: $TODAY"
-          echo "Target Run Day: $TARGET"
-          if [ "$TODAY" = "$TARGET" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run — proceeding without date check."
             echo "run_next=true" >> $GITHUB_OUTPUT
           else
-            echo "run_next=false" >> $GITHUB_OUTPUT
+            TARGET=$(date -d "$NEXT_START -2 days" +%F)
+            TODAY=$(date -u +%F)
+            echo "AIRAC Identifier: $IDENTIFIER"
+            echo "AIRAC Start: $NEXT_START"
+            echo "Today: $TODAY"
+            echo "Target Run Day: $TARGET"
+
+            if [ "$TODAY" = "$TARGET" ]; then
+              echo "run_next=true" >> $GITHUB_OUTPUT
+            else
+              echo "run_next=false" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: Download DFS CSV
