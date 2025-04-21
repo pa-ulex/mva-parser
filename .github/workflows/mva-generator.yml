@@ -1,0 +1,66 @@
+name: MVA Generator
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+jobs:
+  airac-cc-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '2a'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          npm install airac-cc
+
+      - name: Get AIRAC info using JS
+        id: airac
+        run: |
+          node .github/workflows/get-airac.js > airac.env
+          cat airac.env | grep START | sed 's/^/NEXT_/' >> $GITHUB_ENV
+          cat airac.env | grep END | sed 's/^/NEXT_/' >> $GITHUB_ENV
+          cat airac.env | grep IDENTIFIER >> $GITHUB_ENV
+
+      - name: Conditionally skip if scheduled and not 2 days before
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          TARGET=$(date -d "$NEXT_START -2 days" +%F)
+          TODAY=$(date -u +%F)
+          echo "AIRAC Identifier: $IDENTIFIER"
+          echo "AIRAC Start: $NEXT_START"
+          echo "Today: $TODAY"
+          echo "Target Run Day: $TARGET"
+          if [ "$TODAY" != "$TARGET" ]; then
+            echo "Not the correct day — exiting."
+            exit 0
+          fi
+
+      - name: Download DFS CSV
+        run: |
+          FILE_URL="https://aip.dfs.de/datasets/scripts/getItem.php?amdt=1&content=ED_MVA_${NEXT_START}_${NEXT_END}_revision.csv"
+          echo "Downloading: $FILE_URL"
+          curl -fSL "$FILE_URL" -o data.csv
+
+      - name: Run Python script
+        run: |
+          python mva_parser.py data.csv output.txt
+
+      - name: Upload output as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: airac-output-${{ env.IDENTIFIER }}
+          path: output.txt
