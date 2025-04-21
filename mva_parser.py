@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-MVA Parser for Topsky - Creates both Summer (Warm) and Winter (Cold) MVA maps
-with proper altitude values and text positioning
-"""
-
 import csv
 import re
 import os
