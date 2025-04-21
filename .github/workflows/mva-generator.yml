@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  airac-cc-run:
+  mva-generator:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,7 +16,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '2a'
+          node-version: '22'
 
       - name: Set up Python
         uses: actions/setup-python@v5
