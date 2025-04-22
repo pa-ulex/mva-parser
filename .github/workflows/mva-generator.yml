@@ -42,10 +42,10 @@ jobs:
             echo "Manual run — proceeding without date check."
             echo "run_next=true" >> $GITHUB_OUTPUT
           else
-            TARGET=$(date -d "$NEXT_START -2 days" +%F)
+            TARGET=$(date -d "$NEXT_END -2 days" +%F)
             TODAY=$(date -u +%F)
             echo "AIRAC Identifier: $IDENTIFIER"
-            echo "AIRAC Start: $NEXT_START"
+            echo "AIRAC End: $NEXT_END"
             echo "Today: $TODAY"
             echo "Target Run Day: $TARGET"
 
