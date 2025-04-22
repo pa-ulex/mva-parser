@@ -38,7 +38,7 @@ jobs:
       - name: Check if it's 2 days before AIRAC (only for scheduled runs)
         id: check-date
         run: |
-          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "Manual run — proceeding without date check."
             echo "run_next=true" >> $GITHUB_OUTPUT
           else
