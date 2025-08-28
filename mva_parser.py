@@ -116,38 +116,16 @@ def format_altitude(altitude):
     # Handle None or empty string
     if altitude is None or altitude == '':
         return None
-    
     try:
-        # Convert to float, then to int (handles string decimals like "30.0")
-        alt_float = float(altitude)
-        
-        # Reject zero or negative values
-        if alt_float <= 0:
+        alt_int = int(float(altitude))
+        if alt_int <= 0:
             return None
-        
-        # Convert to integer
-        alt_int = int(alt_float)
-        
-        # Convert to string
-        alt_str = str(alt_int)
-        
-        # Single digit values: add a leading space
-        if len(alt_str) == 1:
-            return f" {alt_str}"
-        # Two-digit values: return as is
-        elif len(alt_str) == 2:
-            return alt_str
-        # Values over 99: truncate to last 2 digits
-        else:
-            # Check if the last two digits are "00"
-            if alt_str[-2:] == "00":
-                # For large round numbers, return the first two significant digits
-                if int(alt_str) % 100 == 0:
-                    return alt_str[:2]
-                else:
-                    return alt_str[-2:]
-            else:
-                return alt_str[-2:]
+
+        # Convert to hundreds of feet
+        alt_hundreds = alt_int // 100
+
+        return str(alt_hundreds)
+
     except (ValueError, TypeError) as e:
         print(f"Error formatting altitude '{altitude}': {e}")
         return None
@@ -195,33 +173,41 @@ def calculate_centroid(coords):
             # Convert to shapely polygon (swap lat/lon order for shapely)
             polygon = Polygon([(lon, lat) for lat, lon in coords])
             
+            
+            #Check if polygon is empty
+            if polygon.is_empty:
+                return None
+            
             # Get the centroid point
             centroid = polygon.centroid
             
             # Check if centroid is inside the polygon
             if polygon.contains(centroid):
                 return [centroid.y, centroid.x]  # Return as [lat, lon]
-            else:
-                # If centroid is outside, find a point inside the polygon
-                if not polygon.is_empty:
-                    point_on_surface = polygon.representative_point()
-                    return [point_on_surface.y, point_on_surface.x]  # Return as [lat, lon]
-                else:
-                    # Fall back to simple center calculation
-                    lat_sum = sum(coord[0] for coord in coords)
-                    lon_sum = sum(coord[1] for coord in coords)
-                    return [lat_sum / len(coords), lon_sum / len(coords)]
+            
+            # Fallback: move the centroid step by step towards a guaranteed inside point
+            inside = polygon.representative_point()
+            test_point = centroid
+            for i in range(10):  # max 10 iterations
+                midx = (test_point.x + inside.x) / 2
+                midy = (test_point.y + inside.y) / 2
+                test_point = Point(midx, midy)
+                if polygon.contains(test_point):
+                    return [test_point.y, test_point.x]
+
+            # If everything fails, just return representative_point
+            return [inside.y, inside.x]
         else:
             # Fall back to simple centroid calculation if Shapely is not available
-            lat_sum = sum(coord[0] for coord in coords)
-            lon_sum = sum(coord[1] for coord in coords)
+            lat_sum = sum(c[0] for c in coords)
+            lon_sum = sum(c[1] for c in coords)
             return [lat_sum / len(coords), lon_sum / len(coords)]
     
     except Exception as e:
         print(f"Error calculating centroid: {e}")
         # Fall back to simple centroid calculation
-        lat_sum = sum(coord[0] for coord in coords)
-        lon_sum = sum(coord[1] for coord in coords)
+        lat_sum = sum(c[0] for c in coords)
+        lon_sum = sum(c[1] for c in coords)
         return [lat_sum / len(coords), lon_sum / len(coords)]
 
 def generate_text_entries(polygons):
