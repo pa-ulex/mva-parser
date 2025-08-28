@@ -116,6 +116,7 @@ def format_altitude(altitude):
     # Handle None or empty string
     if altitude is None or altitude == '':
         return None
+
     try:
         alt_int = int(float(altitude))
         if alt_int <= 0:
@@ -244,9 +245,10 @@ def generate_text_entries(polygons):
     
     return text_entries
 
-def convert_csv_to_topsky(csv_file, output_file):
+def convert_csv_to_topsky(csv_file, output_file, topsky_maps="both"):
     """
     Convert MVA CSV file to Topsky format with both Summer and Winter maps
+    topsky_maps: "both" (default), "summer", or "winter"
     """
     # Read CSV data
     data = read_csv_file(csv_file)
@@ -336,53 +338,64 @@ def convert_csv_to_topsky(csv_file, output_file):
     print(f"Processed {warm_count} polygons for summer MVA")
     print(f"Processed {cold_count} polygons for winter MVA")
     
-    # Generate LINE and TEXT entries for both maps
-    warm_lines = generate_line_entries(warm_polygons)
-    warm_texts = generate_text_entries(warm_polygons)
-    
-    cold_lines = generate_line_entries(cold_polygons)
-    cold_texts = generate_text_entries(cold_polygons)
-    
-    print(f"Generated {len(warm_lines)} lines and {len(warm_texts)} texts for summer MVA")
-    print(f"Generated {len(cold_lines)} lines and {len(cold_texts)} texts for winter MVA")
-    
     # Write to output file
     try:
+        # initialize to avoid reference errors
+        warm_lines, warm_texts, cold_lines, cold_texts = [], [], [], []
         with open(output_file, 'w') as f:
-            # Write Summer (Warm) MVA map
-            f.write("MAP:MVA Germany Summer\n")
-            f.write("FOLDER:MVA\n")
-            f.write("COLOR:green\n")
-            f.write("STYLE:Solid:1\n")
+            if topsky_maps in ("both", "summer"):
+                # Generate LINE and TEXT entries for warm MVA
+                warm_lines = generate_line_entries(warm_polygons)
+                warm_texts = generate_text_entries(warm_polygons)
+                
+                print(f"Generated {len(warm_lines)} lines and {len(warm_texts)} texts for summer MVA")
+                # Write Summer (Warm) MVA map
+                f.write("MAP:MVA Germany Summer\n")
+                f.write("FOLDER:MVA\n")
+                f.write("COLOR:green\n")
+                f.write("STYLE:Solid:1\n")
+
+                # Write all LINE entries for warm MVA
+                for line in warm_lines:
+                    f.write(f"{line}\n")
+
+                # Write all TEXT entries for warm MVA
+                for text in warm_texts:
+                    f.write(f"{text}\n")
+                    
+            if topsky_maps == "both":
+                # Add a blank line between maps
+                f.write("\n")
             
-            # Write all LINE entries for warm MVA
-            for line in warm_lines:
-                f.write(f"{line}\n")
-            
-            # Write all TEXT entries for warm MVA
-            for text in warm_texts:
-                f.write(f"{text}\n")
-            
-            # Add a blank line between maps
-            f.write("\n")
-            
-            # Write Winter (Cold) MVA map
-            f.write("MAP:MVA Germany Winter\n")
-            f.write("FOLDER:MVA\n")
-            f.write("COLOR:green\n")
-            f.write("STYLE:Solid:1\n")
-            
-            # Write all LINE entries for cold MVA
-            for line in cold_lines:
-                f.write(f"{line}\n")
-            
-            # Write all TEXT entries for cold MVA
-            for text in cold_texts:
-                f.write(f"{text}\n")
+            if topsky_maps in ("both", "winter"):
+                # Generate LINE and TEXT entries for cold MVA
+                cold_lines = generate_line_entries(cold_polygons)
+                cold_texts = generate_text_entries(cold_polygons)
+                
+                print(f"Generated {len(cold_lines)} lines and {len(cold_texts)} texts for winter MVA")
+                # Write Winter (Cold) MVA map
+                f.write("MAP:MVA Germany Winter\n")
+                f.write("FOLDER:MVA\n")
+                f.write("COLOR:green\n")
+                f.write("STYLE:Solid:1\n")
+
+                # Write all LINE entries for cold MVA
+                for line in cold_lines:
+                    f.write(f"{line}\n")
+
+                # Write all TEXT entries for cold MVA
+                for text in cold_texts:
+                    f.write(f"{text}\n")
         
-        print(f"Successfully created Topsky MVA maps in {output_file}")
-        print(f"Summer Map: {len(warm_lines)} LINE entries and {len(warm_texts)} TEXT entries")
-        print(f"Winter Map: {len(cold_lines)} LINE entries and {len(cold_texts)} TEXT entries")
+        if topsky_maps in ("both", "summer"):
+            print(f"Summer Map: {len(warm_lines)} LINE entries and {len(warm_texts)} TEXT entries")
+        if topsky_maps in ("both", "winter"):
+            print(f"Winter Map: {len(cold_lines)} LINE entries and {len(cold_texts)} TEXT entries")
+            
+        if topsky_maps == "both":
+            print(f"Successfully wrote both MVA maps in {output_file}")
+        else:
+            print(f"Successfully wrote {topsky_maps} MVA map in {output_file}")
         return True
     
     except Exception as e:
@@ -396,6 +409,7 @@ def main():
     parser = argparse.ArgumentParser(description='Convert MVA CSV to Topsky format with Summer and Winter maps')
     parser.add_argument('input', help='Input CSV file')
     parser.add_argument('output', help='Output Topsky .txt file')
+    parser.add_argument('--maps', choices=['both', 'summer', 'winter'], default='both', help='Choose which MVA map(s) to generate (default: both)')
     parser.add_argument('--debug', action='store_true', help='Enable debug output')
     
     args = parser.parse_args()
@@ -406,7 +420,7 @@ def main():
         return
     
     # Convert CSV to Topsky format
-    convert_csv_to_topsky(args.input, args.output)
+    convert_csv_to_topsky(args.input, args.output, topsky_maps=args.maps)
 
 if __name__ == "__main__":
     main()
