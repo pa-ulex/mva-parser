@@ -1,10 +1,29 @@
 import csv
 import re
 import os
-import sys
 import argparse
 import math
-from collections import defaultdict
+
+if hasattr(argparse, 'BooleanOptionalAction'):
+    boolean_action = argparse.BooleanOptionalAction
+else:
+    class BooleanOptionalAction(argparse.Action):
+        def __init__(self, option_strings, dest, default=None, required=False, help=None):
+            # Create --foo and --no-foo variants
+            opts = []
+            for opt in option_strings:
+                opts.append(opt)
+                if opt.startswith('--'):
+                    opts.append('--no-' + opt[2:])
+            super().__init__(opts, dest, nargs=0, default=default, required=required, help=help)
+
+        def __call__(self, parser, namespace, values, option_string=None):
+            if option_string and option_string.startswith('--no-'):
+                setattr(namespace, self.dest, False)
+            else:
+                setattr(namespace, self.dest, True)
+
+    boolean_action = BooleanOptionalAction
 
 try:
     from shapely.geometry import Polygon, Point
@@ -245,7 +264,7 @@ def generate_text_entries(polygons):
     
     return text_entries
 
-def convert_csv_to_topsky(csv_file, output_file, topsky_maps="both"):
+def convert_csv_to_topsky(csv_file, output_file, topsky_maps="both", head="true"):
     """
     Convert MVA CSV file to Topsky format with both Summer and Winter maps
     topsky_maps: "both" (default), "summer", or "winter"
@@ -347,13 +366,14 @@ def convert_csv_to_topsky(csv_file, output_file, topsky_maps="both"):
                 # Generate LINE and TEXT entries for warm MVA
                 warm_lines = generate_line_entries(warm_polygons)
                 warm_texts = generate_text_entries(warm_polygons)
-                
+
                 print(f"Generated {len(warm_lines)} lines and {len(warm_texts)} texts for summer MVA")
-                # Write Summer (Warm) MVA map
-                f.write("MAP:MVA Germany Summer\n")
-                f.write("FOLDER:MVA\n")
-                f.write("COLOR:green\n")
-                f.write("STYLE:Solid:1\n")
+                if str(head).lower() == "true":
+                    # Write Summer (Warm) MVA map
+                    f.write("MAP:MVA Germany Summer\n")
+                    f.write("FOLDER:MVA\n")
+                    f.write("COLOR:green\n")
+                    f.write("STYLE:Solid:1\n")
 
                 # Write all LINE entries for warm MVA
                 for line in warm_lines:
@@ -374,10 +394,11 @@ def convert_csv_to_topsky(csv_file, output_file, topsky_maps="both"):
                 
                 print(f"Generated {len(cold_lines)} lines and {len(cold_texts)} texts for winter MVA")
                 # Write Winter (Cold) MVA map
-                f.write("MAP:MVA Germany Winter\n")
-                f.write("FOLDER:MVA\n")
-                f.write("COLOR:green\n")
-                f.write("STYLE:Solid:1\n")
+                if str(head).lower() == "true":
+                    f.write("MAP:MVA Germany Winter\n")
+                    f.write("FOLDER:MVA\n")
+                    f.write("COLOR:green\n")
+                    f.write("STYLE:Solid:1\n")
 
                 # Write all LINE entries for cold MVA
                 for line in cold_lines:
@@ -410,6 +431,7 @@ def main():
     parser.add_argument('input', help='Input CSV file')
     parser.add_argument('output', help='Output Topsky .txt file')
     parser.add_argument('--maps', choices=['both', 'summer', 'winter'], default='both', help='Choose which MVA map(s) to generate (default: both)')
+    parser.add_argument('--head', action=boolean_action, help='Add/Remove Map Head (default: true)')
     parser.add_argument('--debug', action='store_true', help='Enable debug output')
     
     args = parser.parse_args()
@@ -420,7 +442,7 @@ def main():
         return
     
     # Convert CSV to Topsky format
-    convert_csv_to_topsky(args.input, args.output, topsky_maps=args.maps)
+    convert_csv_to_topsky(args.input, args.output, topsky_maps=args.maps, head=args.head)
 
 if __name__ == "__main__":
     main()
